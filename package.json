@@ -1,8 +1,15 @@
 {
+  "name": "robot-tutonovas",
+  "version": "1.1.0",
+  "description": "Assistant Intelligent Tutonovas",
+  "main": "index.js",
+  "engines": {
+    "node": ">=20.0.0"
+  },
   "dependencies": {
-    "@supabase/supabase-js": "^2.98.0",
-    "dotenv": "^17.3.1",
+    "@supabase/supabase-js": "^2.39.0",
+    "dotenv": "^16.3.1",
     "qrcode-terminal": "^0.12.0",
-    "whatsapp-web.js": "^1.34.6"
+    "whatsapp-web.js": "^1.23.0"
   }
 }
