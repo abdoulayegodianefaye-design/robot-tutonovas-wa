@@ -9,13 +9,17 @@ const client = new Client({
     authStrategy: new LocalAuth(),
     puppeteer: {
         headless: true,
-        protocolTimeout: 60000, 
+        protocolTimeout: 60000,
         executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || '/usr/bin/chromium',
         args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-gpu']
     }
 });
 
 const sessions = {};
+
+client.on('qr', (qr) => {
+    console.log('SCANNEZ CE LIEN : https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=' + encodeURIComponent(qr));
+});
 
 client.on('ready', () => console.log('🚀 Assistant Tutonovas Opérationnel !'));
 
@@ -26,41 +30,44 @@ client.on('message', async (msg) => {
 
     if (from.includes('@g.us') || phone === MON_NUMERO) return;
 
-    // --- ANALYSE DES MOTS CLÉS DIRECTS ---
+    console.log(`📩 Nouveau message de ${phone}: ${text}`);
+
+    // --- FILTRE SITE WEB ---
     if (text.includes('site') || text.includes('www.tutonovas.com')) {
-        return client.sendMessage(from, "Vous pouvez consulter l'ensemble de nos forfaits et notre méthodologie sur 🌐 www.tutonovas.com");
+        return client.sendMessage(from, "Vous pouvez consulter l'ensemble de nos services et notre vision sur : 🌐 www.tutonovas.com");
     }
 
-    // --- DÉBUT DE CONVERSATION / QUALIFICATION ---
-    if (!sessions[from] && (text.includes('bonjour') || text.includes('bonsoir') || text.includes('renseignement') || text.includes('info'))) {
+    // --- FILTRE RECRUTEMENT ---
+    if (text.includes('recrute') || text.includes('emploi') || text.includes('travail') || text.includes('cv')) {
+        return client.sendMessage(from, "Bonjour. Pour toute candidature, merci d'envoyer votre CV à : *recrutement@tutonovas.com*. Nos équipes RH traitent les demandes exclusivement par mail.");
+    }
+
+    // --- QUALIFICATION INITIALE ---
+    if (!sessions[from] && (text.includes('bonjour') || text.includes('info') || text.includes('renseignement') || text.includes('bonsoir'))) {
         sessions[from] = { etape: 'accueil' };
-        return client.sendMessage(from, "Bonjour ! Ravi de vous lire. 😊\n\nPour vous orienter au mieux, puis-je savoir quel est l'objet de votre message ?\n\n1️⃣ Demande d'accompagnement scolaire\n2️⃣ Candidature ou demande d'emploi\n3️⃣ Message pour le responsable ou partenariat");
+        return client.sendMessage(from, "Bonjour ! Ravi de vous lire. 😊\n\nPour mieux vous orienter, quel est l'objet de votre demande ?\n\n1️⃣ Accompagnement scolaire pour un élève\n2️⃣ Question administrative ou message pour la direction\n3️⃣ Autre demande");
     }
 
-    // --- LOGIQUE DE TRI HUMAINE ---
+    // --- LOGIQUE DE TRI ---
     if (sessions[from]?.etape === 'accueil') {
-        if (text === '1' || text.includes('accompagnement') || text.includes('cours')) {
+        if (text === '1' || text.includes('élève') || text.includes('cours')) {
             sessions[from].etape = 'choix_service';
             return client.sendMessage(from, "Entendu. S'agit-il d'un soutien scolaire classique ou d'un besoin en éducation spécialisée ?");
-        } else if (text === '2' || text.includes('travail') || text.includes('cv')) {
-            delete sessions[from];
-            return client.sendMessage(from, "Nous centralisons toutes les candidatures par mail à l'adresse : *recrutement@tutonovas.com*. N'hésitez pas à y envoyer votre CV !");
-        } else if (text === '3' || text.includes('responsable')) {
+        } else if (text === '2' || text === '3' || text.includes('responsable')) {
             sessions[from].etape = 'message_direction';
-            return client.sendMessage(from, "Je comprends. Afin que je puisse transmettre votre demande au responsable, pourriez-vous me préciser l'objet de votre message ?");
+            return client.sendMessage(from, "Je comprends. Afin que je puisse transmettre votre demande au responsable, pourriez-vous me préciser l'objet précis de votre message ?");
         }
     }
 
-    // --- FILTRE POUR LE RESPONSABLE (SAVOIR AVANT DE TRANSMETTRE) ---
+    // --- FILTRE DIRECTION ---
     if (sessions[from]?.etape === 'message_direction') {
-        const alerte = `⚠️ *MESSAGE DIRECTION* ⚠️\n👤 : ${phone}\n📝 OBJET : ${msg.body}`;
-        await client.sendMessage(`${MON_NUMERO}@c.us`, alerte);
-        await client.sendMessage(from, "C'est bien reçu. Votre message a été transmis à la direction. Vous serez recontacté si nécessaire. ✨");
+        await client.sendMessage(`${MON_NUMERO}@c.us`, `⚠️ *MESSAGE DIRECTION* ⚠️\n👤 : ${phone}\n📝 OBJET : ${msg.body}`);
+        await client.sendMessage(from, "C'est bien reçu. Votre message a été transmis à la direction. Vous serez recontacté prochainement. ✨");
         delete sessions[from];
         return;
     }
 
-    // --- TUNNEL LEAD (CLIENT) ---
+    // --- TUNNEL LEAD ---
     if (sessions[from]?.etape === 'choix_service') {
         if (text.includes('classique')) {
             sessions[from] = { etape: 'collecte', service: 'Classique' };
