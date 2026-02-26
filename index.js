@@ -13,13 +13,20 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 // --- 2. INITIALISATION DU ROBOT ---
 const client = new Client({
     authStrategy: new LocalAuth(),
-    authTimeoutMs: 60000,
     puppeteer: {
         headless: true,
-        args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-extensions']
+        executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || '/usr/bin/chromium',
+        args: [
+            '--no-sandbox', 
+            '--disable-setuid-sandbox', 
+            '--disable-extensions',
+            '--disable-dev-shm-usage', // Important pour les serveurs
+            '--no-first-run',
+            '--no-zygote',
+            '--single-process'
+        ]
     }
 });
-
 const sessions = {}; 
 
 // --- 3. GÉNÉRATION DU QR CODE ---
