@@ -1,11 +1,10 @@
 require('dotenv').config();
 const { Client, LocalAuth } = require('whatsapp-web.js');
-const qrcode = require('qrcode-terminal');
 const { createClient } = require('@supabase/supabase-js');
 
 // --- 1. CONFIGURATION ---
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
-const MON_NUMERO = '221777790392'; // 👈 REMPLACE PAR TON NUMÉRO (ex: 221771234567)
+const MON_NUMERO = '221761638398'; 
 
 const client = new Client({
     authStrategy: new LocalAuth(),
@@ -18,17 +17,15 @@ const client = new Client({
 
 const sessions = {};
 
-// --- 2. STRATÉGIE COMMERCIALE (COPYWRITING) ---
-const salesExpert = {
-    bienvenue: `Bienvenue chez *Tutonovas*. 🎓\n\nNous ne nous contentons pas de donner des cours, nous bâtissons une vision pour l'avenir de votre enfant.\n\nPour vous orienter vers la solution la plus adaptée, quel est votre objectif prioritaire ?\n\n*1.* Viser l'excellence scolaire et une discipline de travail (Classique)\n*2.* Offrir un accompagnement spécialisé à un enfant aux besoins particuliers (Attention, comportement, langage)`,
-
-    argumentaireClassique: `Le forfait *Classique* est le choix des parents qui veulent offrir à leur enfant un suivi sérieux, régulier et valorisant. 📚\n\nIci, votre enfant n'achète pas des heures de cours. Il intègre un cadre où il apprend à *penser*, à *s'organiser* et surtout à *reprendre confiance*.\n\n*Nos parcours (Mensuel) :*\n- *Primaire :* Dès 35 000 FCFA\n- *Collège :* Dès 45 000 FCFA\n- *Lycée :* Dès 50 000 FCFA\n\nC'est un investissement pour son avenir. Pour préparer son profil, en quelle classe est l'enfant ?`,
-
-    argumentaireSpecifique: `Nous comprenons les défis que vous traversez. Chaque enfant mérite un regard expert et bienveillant. 🌟\n\nNos éducateurs spécialisés créent un "cocon éducatif" à domicile. En nous appuyant sur les bilans (orthophoniste, psy), nous transformons les blocages en victoires.\n\n*Nos programmes dédiés :*\n- *Sérénité :* 60 000 FCFA/mois\n- *Progrès :* 100 000 FCFA/mois\n- *Intensif :* 180 000 FCFA/mois\n\nPour mieux vous conseiller, pourriez-vous me décrire brièvement ses besoins ou son parcours ?`,
-
-    domicile: `Absolument. 🏠 L'éducation à domicile est au cœur de notre méthode. C'est dans son environnement familial que l'enfant se sent le plus en confiance pour progresser sereinement. Nous intervenons partout à Dakar et zone VDN.`,
-
-    doutes: `C'est une question légitime. Chez Tutonovas, nos tuteurs ne sont pas de simples répétiteurs : ils sont sélectionnés pour leur capacité à transmettre une *discipline de fer* dans un *gant de velours*. Chaque séance est un pas vers l'autonomie.`
+// --- 2. BASE DE CONNAISSANCES HUMAINE ---
+const expertAnswers = {
+    classique: `Le forfait *Classique* est conçu pour transformer la scolarité en un parcours de réussite. Dès 35 000 FCFA/mois, votre enfant bénéficie d'un encadrement structuré qui lui redonne confiance et méthode.`,
+    
+    specifique: `Pour les besoins particuliers, nous créons un véritable "cocon éducatif". Nos éducateurs s'adaptent au rythme de l'enfant (autisme, TDAH, langage) dès 60 000 FCFA/mois pour un suivi sur-mesure.`,
+    
+    domicile: `Absolument, nous intervenons directement chez vous. 🏠 C'est dans son environnement familial, là où il est le plus à l'aise, que l'enfant progresse le mieux.`,
+    
+    methode: `Notre approche n'est pas de faire de la simple répétition. Nous transmettons une discipline de travail et une envie d'apprendre qui resteront gravées bien après les cours.`
 };
 
 // --- 3. LOGIQUE DU BOT ---
@@ -43,46 +40,52 @@ client.on('message', async (msg) => {
     const text = msg.body.toLowerCase();
     const phone = from.split('@')[0];
 
-    // A. RÉPONSES AUX MOTS-CLÉS (Vente Invisible)
-    if (text.includes('tarif') || text.includes('prix') || text.includes('combien')) {
-        await client.sendMessage(from, "Chez Tutonovas, l'éducation est un investissement durable. Voici nos parcours conçus pour la réussite :");
-        await client.sendMessage(from, salesExpert.argumentaireClassique);
-        await client.sendMessage(from, "--- OU ---");
-        await client.sendMessage(from, salesExpert.argumentaireSpecifique);
-        return;
+    // Éviter de répondre à soi-même ou aux groupes
+    if (from.includes('@g.us') || phone === MON_NUMERO) return;
+
+    // A. RÉPONSES PRÉCISES AUX QUESTIONS (L'Expert qui écoute)
+    
+    // Question sur les TARIFS
+    if (text.includes('tarif') || text.includes('prix') || text.includes('combien') || text.includes('coûte')) {
+        await client.sendMessage(from, "Je comprends que l'aspect financier soit important. Chez Tutonovas, nous proposons deux approches selon les besoins de votre enfant :");
+        await client.sendMessage(from, `1️⃣ *Soutien Classique :* ${expertAnswers.classique}`);
+        await client.sendMessage(from, `2️⃣ *Éducation Spécialisée :* ${expertAnswers.specifique}`);
+        return client.sendMessage(from, "Lequel de ces deux suivis vous semble le plus adapté à votre situation ? (Répondez 1 ou 2)");
     }
 
-    if (text.includes('domicile') || text.includes('déplace') || text.includes('maison')) {
-        return client.sendMessage(from, salesExpert.domicile + "\n\nSouhaitez-vous inscrire votre enfant ? (Répondez 1 ou 2)");
+    // Question sur le DOMICILE
+    if (text.includes('domicile') || text.includes('déplace') || text.includes('maison') || text.includes('où')) {
+        return client.sendMessage(from, `${expertAnswers.domicile}\n\nSouhaitez-vous que l'on discute d'une inscription ?`);
     }
 
-    if (text.includes('efficace') || text.includes('garantie') || text.includes('mieux')) {
-        return client.sendMessage(from, salesExpert.doutes);
+    // Question sur la MÉTHODE / EFFICACITÉ
+    if (text.includes('comment') || text.includes('efficace') || text.includes('garantie') || text.includes('mieux')) {
+        return client.sendMessage(from, `${expertAnswers.methode}\n\nPour quelle classe cherchez-vous une solution ?`);
     }
 
-    // B. TUNNEL DE CONVERSION
-    if (text.includes('bonjour') || text.includes('inscription') || text === 'salut' || text === 'info') {
+    // B. TUNNEL DE CONVERSION (L'Expert qui guide)
+    if (text.includes('bonjour') || text.includes('salut') || text === 'info' || text.includes('inscription')) {
         sessions[from] = { etape: 'orientation' };
-        return client.sendMessage(from, salesExpert.bienvenue);
+        return client.sendMessage(from, `Bonjour ! C'est un plaisir d'échanger avec vous. 🎓\n\nChez *Tutonovas*, nous aidons chaque enfant à révéler son potentiel. Pour mieux vous conseiller, quel est votre besoin ?\n\n*1.* Excellence scolaire & discipline (Classique)\n*2.* Besoin particulier / Handicap (Spécialisé)`);
     }
 
-    // ÉTAPE 1 : ORIENTATION
+    // ÉTAPE 1 : RÉPONSE AU CHOIX 1 OU 2
     if (sessions[from]?.etape === 'orientation') {
         if (text === '1') {
             sessions[from] = { etape: 'collecte', service: 'Classique' };
-            return client.sendMessage(from, salesExpert.argumentaireClassique);
+            return client.sendMessage(from, `Excellent choix. Le suivi classique apporte une vraie sérénité aux parents.\n\nEn quelle classe est votre enfant et quelles sont ses difficultés actuelles ?`);
         }
         if (text === '2') {
             sessions[from] = { etape: 'collecte', service: 'Spécifique' };
-            return client.sendMessage(from, salesExpert.argumentaireSpecifique);
+            return client.sendMessage(from, `Je comprends tout à fait. Ce type d'accompagnement demande beaucoup de bienveillance.\n\nPourriez-vous me décrire brièvement ses besoins ou son parcours pour que je prépare son dossier ?`);
         }
     }
 
-    // ÉTAPE 2 : COLLECTE ET CLÔTURE
+    // ÉTAPE 2 : COLLECTE ET CLÔTURE (Le Closing)
     if (sessions[from]?.etape === 'collecte') {
         const service = sessions[from].service;
 
-        // 1. Sauvegarde Supabase
+        // Sauvegarde Supabase
         await supabase.from('leads').insert([{ 
             phone_number: phone, 
             service_type: service, 
@@ -90,12 +93,11 @@ client.on('message', async (msg) => {
             statut: service === 'Spécifique' ? '🔥 URGENT' : 'À contacter' 
         }]);
 
-        // 2. Alerte Commerciale pour Toi
-        const alerte = `🎯 *NOUVEAU LEAD CONVAINCU* 🎯\n\n👤 *Parent :* ${phone}\n🎓 *Service :* ${service}\n📝 *Détails :* ${msg.body}\n\nAppelle-le vite pour conclure la vente !`;
+        // Alerte Commerciale pour Toi
+        const alerte = `🎯 *NOUVEAU LEAD TUTONOVAS* 🎯\n👤 *Parent :* ${phone}\n🎓 *Service :* ${service}\n📝 *Détails :* ${msg.body}`;
         await client.sendMessage(`${MON_NUMERO}@c.us`, alerte);
 
-        // 3. Message de fin rassurant
-        await client.sendMessage(from, `C'est parfaitement noté. Je transmets personnellement votre demande à notre responsable pédagogique. \n\nVous avez pris une excellente décision pour son épanouissement. Un conseiller vous contactera très prochainement pour finaliser l'accompagnement.`);
+        await client.sendMessage(from, `C'est parfaitement noté. Je transmets vos informations à notre responsable pédagogique dès maintenant.\n\nVous avez pris une belle décision pour son avenir. Un conseiller vous appellera très bientôt pour finaliser tout cela. ✨`);
         
         delete sessions[from];
     }
