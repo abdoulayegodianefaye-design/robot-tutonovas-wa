@@ -25,8 +25,7 @@ const sessions = {};
 // --- 3. GÉNÉRATION DU QR CODE ---
 client.on('qr', (qr) => {
     console.log('--------------------------------------------------');
-    console.log('SCANNEZ CE CODE POUR TUTONOVAS');
-    qrcode.generate(qr, { small: true });
+    console.log('SCANNEZ ICI : https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=' + encodeURIComponent(qr));
     console.log('--------------------------------------------------');
 });
 
