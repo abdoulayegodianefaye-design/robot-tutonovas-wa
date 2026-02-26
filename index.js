@@ -1,122 +1,102 @@
-require('dotenv').config(); // Charge le coffre-fort
+require('dotenv').config();
 const { Client, LocalAuth } = require('whatsapp-web.js');
 const qrcode = require('qrcode-terminal');
 const { createClient } = require('@supabase/supabase-js');
 
-// --- 1. CONFIGURATION SUPABASE (SÉCURISÉE) ---
-const supabaseUrl = process.env.SUPABASE_URL; 
-const supabaseKey = process.env.SUPABASE_KEY; 
-const supabase = createClient(supabaseUrl, supabaseKey);
+// --- 1. CONFIGURATION ---
+const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
+const MON_NUMERO = '221777790392'; // 👈 REMPLACE PAR TON NUMÉRO (ex: 221771234567)
 
-// ... (Le reste de ton code ne change pas)
-
-// --- 2. INITIALISATION DU ROBOT ---
 const client = new Client({
     authStrategy: new LocalAuth(),
     puppeteer: {
         headless: true,
         executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || '/usr/bin/chromium',
-        args: [
-            '--no-sandbox', 
-            '--disable-setuid-sandbox', 
-            '--disable-extensions',
-            '--disable-dev-shm-usage', // Important pour les serveurs
-            '--no-first-run',
-            '--no-zygote',
-            '--single-process'
-        ]
+        args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
     }
 });
-const sessions = {}; 
 
-// --- 3. GÉNÉRATION DU QR CODE ---
+const sessions = {};
+
+// --- 2. STRATÉGIE COMMERCIALE (COPYWRITING) ---
+const salesExpert = {
+    bienvenue: `Bienvenue chez *Tutonovas*. 🎓\n\nNous ne nous contentons pas de donner des cours, nous bâtissons une vision pour l'avenir de votre enfant.\n\nPour vous orienter vers la solution la plus adaptée, quel est votre objectif prioritaire ?\n\n*1.* Viser l'excellence scolaire et une discipline de travail (Classique)\n*2.* Offrir un accompagnement spécialisé à un enfant aux besoins particuliers (Attention, comportement, langage)`,
+
+    argumentaireClassique: `Le forfait *Classique* est le choix des parents qui veulent offrir à leur enfant un suivi sérieux, régulier et valorisant. 📚\n\nIci, votre enfant n'achète pas des heures de cours. Il intègre un cadre où il apprend à *penser*, à *s'organiser* et surtout à *reprendre confiance*.\n\n*Nos parcours (Mensuel) :*\n- *Primaire :* Dès 35 000 FCFA\n- *Collège :* Dès 45 000 FCFA\n- *Lycée :* Dès 50 000 FCFA\n\nC'est un investissement pour son avenir. Pour préparer son profil, en quelle classe est l'enfant ?`,
+
+    argumentaireSpecifique: `Nous comprenons les défis que vous traversez. Chaque enfant mérite un regard expert et bienveillant. 🌟\n\nNos éducateurs spécialisés créent un "cocon éducatif" à domicile. En nous appuyant sur les bilans (orthophoniste, psy), nous transformons les blocages en victoires.\n\n*Nos programmes dédiés :*\n- *Sérénité :* 60 000 FCFA/mois\n- *Progrès :* 100 000 FCFA/mois\n- *Intensif :* 180 000 FCFA/mois\n\nPour mieux vous conseiller, pourriez-vous me décrire brièvement ses besoins ou son parcours ?`,
+
+    domicile: `Absolument. 🏠 L'éducation à domicile est au cœur de notre méthode. C'est dans son environnement familial que l'enfant se sent le plus en confiance pour progresser sereinement. Nous intervenons partout à Dakar et zone VDN.`,
+
+    doutes: `C'est une question légitime. Chez Tutonovas, nos tuteurs ne sont pas de simples répétiteurs : ils sont sélectionnés pour leur capacité à transmettre une *discipline de fer* dans un *gant de velours*. Chaque séance est un pas vers l'autonomie.`
+};
+
+// --- 3. LOGIQUE DU BOT ---
 client.on('qr', (qr) => {
-    console.log('--------------------------------------------------');
-    console.log('SCANNEZ ICI : https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=' + encodeURIComponent(qr));
-    console.log('--------------------------------------------------');
+    console.log('SCANNEZ CE LIEN : https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=' + encodeURIComponent(qr));
 });
 
-client.on('ready', () => {
-    console.log('🚀 Robot Tutonovas en ligne et opérationnel !');
-});
+client.on('ready', () => console.log('🚀 Expert Commercial Tutonovas Opérationnel !'));
 
-// --- 4. LOGIQUE DE FILTRAGE ET DIALOGUE ---
 client.on('message', async (msg) => {
-    // SÉCURITÉ : Ignorer les statuts et les diffusions pour ne pas polluer tes stories
-    if (msg.from === 'status@broadcast' || msg.broadcast) return;
-
     const from = msg.from;
-    const messageRecu = msg.body.toLowerCase();
-    const estUnGroupe = from.includes('@g.us');
-    
-    // CORRECTION NUMÉRO : On garde uniquement les chiffres (ex: 22177...)
-    const phone = from.split('@')[0]; 
+    const text = msg.body.toLowerCase();
+    const phone = from.split('@')[0];
 
-    if (estUnGroupe) return;
-
-    // A. ÉTAPE 0 : DÉTECTION NOUVEAU PARENT
-    if (!sessions[from]) {
-        const motsClesParents = ['inscription', 'inscrire', 'enfant', 'fils', 'fille', 'cours', 'soutien', 'classe', 'besoin', 'tarif', 'autiste', 'autisme', 'trisomie', 'retard'];
-        const motsClesTravail = ['travail', 'emploi', 'recrutement', 'enseigner', 'cv', 'poste'];
-
-        const estParent = motsClesParents.some(mot => messageRecu.includes(mot));
-        const estTravail = motsClesTravail.some(mot => messageRecu.includes(mot));
-
-        if (estParent && !estTravail) {
-            sessions[from] = { etape: 'choix_service' };
-            
-            const menu = `🎓 *Bienvenue chez Tutonovas !* \n\n` +
-                         `Pour vous aider au mieux, quel service recherchez-vous ?\n\n` +
-                         `1️⃣ *Soutien Scolaire Classique* (Cours, devoirs, examens)\n` +
-                         `2️⃣ *Besoins Spécifiques* (Autisme, Retard de langage, Trisomie, etc.)\n\n` +
-                         `Répondez par *1* ou *2*.`;
-            
-            await client.sendMessage(from, menu);
-            await supabase.from('leads').insert([{ phone_number: phone, message: msg.body, statut: 'En cours' }]);
-            return;
-        } 
-        
-        if (estTravail) {
-            await client.sendMessage(from, "Bonjour, nous ne recrutons pas par WhatsApp. Merci d'envoyer votre CV par email à contact@tutonovas.com.");
-            return;
-        }
-    }
-
-    // B. ÉTAPE 1 : CHOIX DU SERVICE
-    if (sessions[from] && sessions[from].etape === 'choix_service') {
-        if (msg.body === '1') {
-            sessions[from].service = 'Classique';
-            sessions[from].etape = 'collecte_details';
-            await client.sendMessage(from, "Très bien. Quel est le prénom de l'enfant et sa classe actuelle ?");
-        } 
-        else if (msg.body === '2') {
-            sessions[from].service = 'Spécifique';
-            sessions[from].etape = 'collecte_details';
-            await client.sendMessage(from, "Nous comprenons parfaitement. ❤️\n\nPourriez-vous nous préciser la nature du besoin de l'enfant (Autisme, langage, trisomie ou autre) ? Nos experts reviendront vers vous.");
-        } else {
-            await client.sendMessage(from, "Veuillez répondre par *1* ou *2* pour continuer l'inscription.");
-        }
+    // A. RÉPONSES AUX MOTS-CLÉS (Vente Invisible)
+    if (text.includes('tarif') || text.includes('prix') || text.includes('combien')) {
+        await client.sendMessage(from, "Chez Tutonovas, l'éducation est un investissement durable. Voici nos parcours conçus pour la réussite :");
+        await client.sendMessage(from, salesExpert.argumentaireClassique);
+        await client.sendMessage(from, "--- OU ---");
+        await client.sendMessage(from, salesExpert.argumentaireSpecifique);
         return;
     }
 
-    // C. ÉTAPE 2 : COLLECTE DES DÉTAILS ET FIN
-    if (sessions[from] && sessions[from].etape === 'collecte_details') {
-        const service = sessions[from].service;
-        
-        const { error } = await supabase
-            .from('leads')
-            .update({ 
-                service_type: service,
-                details_enfant: msg.body,
-                statut: service === 'Spécifique' ? 'URGENT - Spécialisé' : 'À appeler'
-            })
-            .eq('phone_number', phone)
-            .eq('statut', 'En cours');
+    if (text.includes('domicile') || text.includes('déplace') || text.includes('maison')) {
+        return client.sendMessage(from, salesExpert.domicile + "\n\nSouhaitez-vous inscrire votre enfant ? (Répondez 1 ou 2)");
+    }
 
-        if (!error) {
-            await client.sendMessage(from, `Merci ! Vos informations ont été transmises à notre équipe ${service === 'Spécifique' ? 'spécialisée' : 'pédagogique'}. \n\nUn conseiller va vous appeler sur ce numéro très prochainement. À bientôt !`);
-            console.log(`✅ Dossier ${service} terminé pour : ${phone}`);
+    if (text.includes('efficace') || text.includes('garantie') || text.includes('mieux')) {
+        return client.sendMessage(from, salesExpert.doutes);
+    }
+
+    // B. TUNNEL DE CONVERSION
+    if (text.includes('bonjour') || text.includes('inscription') || text === 'salut' || text === 'info') {
+        sessions[from] = { etape: 'orientation' };
+        return client.sendMessage(from, salesExpert.bienvenue);
+    }
+
+    // ÉTAPE 1 : ORIENTATION
+    if (sessions[from]?.etape === 'orientation') {
+        if (text === '1') {
+            sessions[from] = { etape: 'collecte', service: 'Classique' };
+            return client.sendMessage(from, salesExpert.argumentaireClassique);
         }
+        if (text === '2') {
+            sessions[from] = { etape: 'collecte', service: 'Spécifique' };
+            return client.sendMessage(from, salesExpert.argumentaireSpecifique);
+        }
+    }
+
+    // ÉTAPE 2 : COLLECTE ET CLÔTURE
+    if (sessions[from]?.etape === 'collecte') {
+        const service = sessions[from].service;
+
+        // 1. Sauvegarde Supabase
+        await supabase.from('leads').insert([{ 
+            phone_number: phone, 
+            service_type: service, 
+            details_enfant: msg.body, 
+            statut: service === 'Spécifique' ? '🔥 URGENT' : 'À contacter' 
+        }]);
+
+        // 2. Alerte Commerciale pour Toi
+        const alerte = `🎯 *NOUVEAU LEAD CONVAINCU* 🎯\n\n👤 *Parent :* ${phone}\n🎓 *Service :* ${service}\n📝 *Détails :* ${msg.body}\n\nAppelle-le vite pour conclure la vente !`;
+        await client.sendMessage(`${MON_NUMERO}@c.us`, alerte);
+
+        // 3. Message de fin rassurant
+        await client.sendMessage(from, `C'est parfaitement noté. Je transmets personnellement votre demande à notre responsable pédagogique. \n\nVous avez pris une excellente décision pour son épanouissement. Un conseiller vous contactera très prochainement pour finaliser l'accompagnement.`);
+        
         delete sessions[from];
     }
 });
